@@ -1,3 +1,4 @@
+gym
 torch
 torchvision>=0.16.2
 absl-py==2.0.0

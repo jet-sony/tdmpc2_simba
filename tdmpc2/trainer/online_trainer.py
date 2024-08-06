@@ -52,6 +52,7 @@ class OnlineTrainer(Trainer):
             while not done:
                 action = self.agent.act(obs, t0=t==0, eval_mode=True)
                 obs, reward, done, info = self.env.step(action.numpy())
+                reward = torch.tensor(reward, dtype=torch.float32)
                 obs = self._normalizer.normalize(obs)
                 obs = self._obs_to_tensor(obs)
                 ep_reward += reward
@@ -74,7 +75,7 @@ class OnlineTrainer(Trainer):
         else:
             obs = obs.unsqueeze(0).cpu()
         if action is None:
-            action = torch.full_like(self.env.rand_act(), float('nan'))
+            action = torch.full_like(torch.from_numpy(self.env.action_space.sample().astype(np.float32)), float("nan"))
         if reward is None:
             reward = torch.tensor(float('nan'))
         td = TensorDict(dict(
@@ -111,7 +112,7 @@ class OnlineTrainer(Trainer):
                     self._ep_idx = self.buffer.add(torch.cat(self._tds))
 
                 obs = self.env.reset()
-                obs = self._normalizer.normalize(obs)
+                self._normalizer.update(obs)
                 obs = self._obs_to_tensor(obs)
                 self._tds = [self.to_td(obs)]
 
@@ -119,9 +120,10 @@ class OnlineTrainer(Trainer):
             if self._step > self.cfg.seed_steps:
                 action = self.agent.act(obs, t0=len(self._tds)==1)
             else:
-                action = self.env.rand_act()
+                action = torch.from_numpy(self.env.action_space.sample().astype(np.float32))
             obs, reward, done, info = self.env.step(action.numpy())
-            obs = self._normalizer.update(obs)
+            reward = torch.tensor(reward, dtype=torch.float32)
+            self._normalizer.update(obs)
             obs = self._normalizer.normalize(obs)
             obs = self._obs_to_tensor(obs)
             self._tds.append(self.to_td(obs, action, reward))

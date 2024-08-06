@@ -15,12 +15,14 @@ class ObservationNormalizer:
         self.epsilon = epsilon
 
     def normalize(self, x) -> np.ndarray:
-        return (x - self.mean) / np.sqrt(
-            self.var + self.epsilon
-        )
+        return (x - self.mean) / np.sqrt(self.var + self.epsilon)
 
     def update(self, x):
         """Updates the mean, var and count from a batch of samples."""
+        if len(x.shape) == 1:
+            x = x.unsqueeze(0)
+        assert len(x.shape) == 2
+
         batch_mean = np.mean(x, axis=0)
         batch_var = np.var(x, axis=0)
         batch_count = x.shape[0]
