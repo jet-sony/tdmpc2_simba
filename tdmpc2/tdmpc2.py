@@ -51,7 +51,7 @@ class TDMPC2:
 	def save(self, fp):
 		"""
 		Save state dict of the agent to filepath.
-		
+
 		Args:
 			fp (str): Filepath to save state dict to.
 		"""
@@ -60,7 +60,7 @@ class TDMPC2:
 	def load(self, fp):
 		"""
 		Load a saved state dict from filepath (or dictionary) into current agent.
-		
+
 		Args:
 			fp (str or dict): Filepath or state dict to load.
 		"""
@@ -71,13 +71,13 @@ class TDMPC2:
 	def act(self, obs, t0=False, eval_mode=False, task=None):
 		"""
 		Select an action by planning in the latent space of the world model.
-		
+
 		Args:
 			obs (torch.Tensor): Observation from the environment.
 			t0 (bool): Whether this is the first observation in the episode.
 			eval_mode (bool): Whether to use the mean of the action distribution.
 			task (int): Task index (only used for multi-task experiments).
-		
+
 		Returns:
 			torch.Tensor: Action to take in the environment.
 		"""
@@ -106,7 +106,7 @@ class TDMPC2:
 	def plan(self, z, t0=False, eval_mode=False, task=None):
 		"""
 		Plan a sequence of actions using the learned world model.
-		
+
 		Args:
 			z (torch.Tensor): Latent state from which to plan.
 			t0 (bool): Whether this is the first observation in the episode.
@@ -115,7 +115,7 @@ class TDMPC2:
 
 		Returns:
 			torch.Tensor: Action to take in the environment.
-		"""		
+		"""
 		# Sample policy trajectories
 		if self.cfg.num_pi_trajs > 0:
 			pi_actions = torch.empty(self.cfg.horizon, self.cfg.num_pi_trajs, self.cfg.action_dim, device=self.device)
@@ -134,7 +134,7 @@ class TDMPC2:
 		actions = torch.empty(self.cfg.horizon, self.cfg.num_samples, self.cfg.action_dim, device=self.device)
 		if self.cfg.num_pi_trajs > 0:
 			actions[:, :self.cfg.num_pi_trajs] = pi_actions
-	
+
 		# Iterate MPPI
 		for _ in range(self.cfg.iterations):
 
@@ -169,11 +169,11 @@ class TDMPC2:
 		if not eval_mode:
 			a += std * torch.randn(self.cfg.action_dim, device=std.device)
 		return a.clamp_(-1, 1)
-		
+
 	def update_pi(self, zs, task):
 		"""
 		Update policy using a sequence of latent states.
-		
+
 		Args:
 			zs (torch.Tensor): Sequence of latent states.
 			task (torch.Tensor): Task index (only used for multi-task experiments).
@@ -202,12 +202,12 @@ class TDMPC2:
 	def _td_target(self, next_z, reward, task):
 		"""
 		Compute the TD-target from a reward and the observation at the following time step.
-		
+
 		Args:
 			next_z (torch.Tensor): Latent state at the following time step.
 			reward (torch.Tensor): Reward at the current time step.
 			task (torch.Tensor): Task index (only used for multi-task experiments).
-		
+
 		Returns:
 			torch.Tensor: TD-target.
 		"""
@@ -218,15 +218,15 @@ class TDMPC2:
 	def update(self, buffer):
 		"""
 		Main update function. Corresponds to one iteration of model learning.
-		
+
 		Args:
 			buffer (common.buffer.Buffer): Replay buffer.
-		
+
 		Returns:
 			dict: Dictionary of training statistics.
 		"""
 		obs, action, reward, task = buffer.sample()
-	
+
 		# Compute targets
 		with torch.no_grad():
 			next_z = self.model.encode(obs[1:], task)
@@ -250,7 +250,7 @@ class TDMPC2:
 		_zs = zs[:-1]
 		qs = self.model.Q(_zs, action, task, return_type='all')
 		reward_preds = self.model.reward(_zs, action, task)
-		
+
 		# Compute losses
 		reward_loss, value_loss = 0, 0
 		for t in range(self.cfg.horizon):
