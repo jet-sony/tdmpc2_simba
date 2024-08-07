@@ -1,5 +1,4 @@
 import torch
-from torch.autograd import forward_ad
 import torch.nn as nn
 import torch.nn.functional as F
 from functorch import combine_state_for_ensemble
