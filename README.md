@@ -1,3 +1,6 @@
+# DO THIS FOR NVIM
+set autoindent noexpandtab tabstop=4 shiftwidth=4
+
 <h1>TD-MPC2</span></h1>
 
 Official implementation of
@@ -14,7 +17,7 @@ Official implementation of
 
 ## Overview
 
-TD-MPC**2** is a scalable, robust model-based reinforcement learning algorithm. It compares favorably to existing model-free and model-based methods across **104** continuous control tasks spanning multiple domains, with a *single* set of hyperparameters (*right*). We further demonstrate the scalability of TD-MPC**2** by training a single 317M parameter agent to perform **80** tasks across multiple domains, embodiments, and action spaces (*left*). 
+TD-MPC**2** is a scalable, robust model-based reinforcement learning algorithm. It compares favorably to existing model-free and model-based methods across **104** continuous control tasks spanning multiple domains, with a *single* set of hyperparameters (*right*). We further demonstrate the scalability of TD-MPC**2** by training a single 317M parameter agent to perform **80** tasks across multiple domains, embodiments, and action spaces (*left*).
 
 <img src="assets/8.png" width="100%" style="max-width: 640px"><br/>
 
@@ -124,7 +127,7 @@ If you find our work useful, please consider citing our paper as follows:
 
 ```
 @inproceedings{hansen2024tdmpc2,
-  title={TD-MPC2: Scalable, Robust World Models for Continuous Control}, 
+  title={TD-MPC2: Scalable, Robust World Models for Continuous Control},
   author={Nicklas Hansen and Hao Su and Xiaolong Wang},
   booktitle={International Conference on Learning Representations (ICLR)},
   year={2024}
