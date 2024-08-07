@@ -50,7 +50,7 @@ def make_multitask_env(cfg):
     cfg.action_dims = env._action_dims
     cfg.episode_lengths = env._episode_lengths
     return env
-    
+
 
 def make_env(cfg):
     """
