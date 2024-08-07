@@ -5,6 +5,7 @@ import torch
 from tensordict.tensordict import TensorDict
 
 from trainer.base import Trainer
+from common.observation_normalizer import ObservationNormalizer
 
 
 class OnlineTrainer(Trainer):
@@ -15,6 +16,7 @@ class OnlineTrainer(Trainer):
         self._step = 0
         self._ep_idx = 0
         self._start_time = time()
+        self._normalizer = ObservationNormalizer(kwargs["cfg"].obs_shape["state"][0])
 
     def common_metrics(self):
         """Return a dictionary of current metrics."""
@@ -24,16 +26,35 @@ class OnlineTrainer(Trainer):
             total_time=time() - self._start_time,
         )
 
+    def _try_f32_tensor(self, x):
+        x = torch.from_numpy(x)
+        if x.dtype == torch.float64:
+            x = x.float()
+        return x
+
+    def _obs_to_tensor(self, obs):
+        if isinstance(obs, dict):
+            for k in obs.keys():
+                obs[k] = self._try_f32_tensor(obs[k])
+        else:
+            obs = self._try_f32_tensor(obs)
+        return obs
+
     def eval(self):
         """Evaluate a TD-MPC2 agent."""
         ep_rewards, ep_successes = [], []
         for i in range(self.cfg.eval_episodes):
             obs, done, ep_reward, t = self.env.reset(), False, 0, 0
+            obs = self._normalizer.normalize(obs)
+            obs = self._obs_to_tensor(obs)
             if self.cfg.save_video:
                 self.logger.video.init(self.env, enabled=(i==0))
             while not done:
                 action = self.agent.act(obs, t0=t==0, eval_mode=True)
-                obs, reward, done, info = self.env.step(action)
+                obs, reward, done, info = self.env.step(action.numpy())
+                reward = torch.tensor(reward, dtype=torch.float32)
+                obs = self._normalizer.normalize(obs)
+                obs = self._obs_to_tensor(obs)
                 ep_reward += reward
                 t += 1
                 if self.cfg.save_video:
@@ -54,7 +75,7 @@ class OnlineTrainer(Trainer):
         else:
             obs = obs.unsqueeze(0).cpu()
         if action is None:
-            action = torch.full_like(self.env.rand_act(), float('nan'))
+            action = torch.full_like(torch.from_numpy(self.env.action_space.sample().astype(np.float32)), float("nan"))
         if reward is None:
             reward = torch.tensor(float('nan'))
         td = TensorDict(dict(
@@ -91,14 +112,21 @@ class OnlineTrainer(Trainer):
                     self._ep_idx = self.buffer.add(torch.cat(self._tds))
 
                 obs = self.env.reset()
+                self._normalizer.update(obs)
+                obs = self._normalizer.normalize(obs)
+                obs = self._obs_to_tensor(obs)
                 self._tds = [self.to_td(obs)]
 
             # Collect experience
             if self._step > self.cfg.seed_steps:
                 action = self.agent.act(obs, t0=len(self._tds)==1)
             else:
-                action = self.env.rand_act()
-            obs, reward, done, info = self.env.step(action)
+                action = torch.from_numpy(self.env.action_space.sample().astype(np.float32))
+            obs, reward, done, info = self.env.step(action.numpy())
+            reward = torch.tensor(reward, dtype=torch.float32)
+            self._normalizer.update(obs)
+            obs = self._normalizer.normalize(obs)
+            obs = self._obs_to_tensor(obs)
             self._tds.append(self.to_td(obs, action, reward))
 
             # Update agent

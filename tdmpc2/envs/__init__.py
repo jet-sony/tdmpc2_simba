@@ -69,7 +69,7 @@ def make_env(cfg):
                 pass
         if env is None:
             raise ValueError(f'Failed to make environment "{cfg.task}": please verify that dependencies are installed and that the task exists.')
-        env = TensorWrapper(env)
+        # env = TensorWrapper(env)
     if cfg.get('obs', 'state') == 'rgb':
         env = PixelWrapper(cfg, env)
     try: # Dict
