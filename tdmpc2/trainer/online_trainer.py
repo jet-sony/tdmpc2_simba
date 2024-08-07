@@ -113,6 +113,7 @@ class OnlineTrainer(Trainer):
 
                 obs = self.env.reset()
                 self._normalizer.update(obs)
+                obs = self._normalizer.normalize(obs)
                 obs = self._obs_to_tensor(obs)
                 self._tds = [self.to_td(obs)]
 
