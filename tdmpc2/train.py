@@ -7,6 +7,7 @@ import torch
 
 import hydra
 from termcolor import colored
+from signal import SIGINT, signal
 
 from common.parser import parse_cfg
 from common.seed import set_seed
@@ -18,6 +19,11 @@ from trainer.online_trainer import OnlineTrainer
 from common.logger import Logger
 
 torch.backends.cudnn.benchmark = True
+
+def shutdown_handler(*_) -> None:
+    print("ctrl-c invoked.")
+    exit(1)
+signal(SIGINT, shutdown_handler)
 
 
 @hydra.main(config_name='config', config_path='.')

@@ -1,4 +1,5 @@
 import torch
+from torch.autograd import forward_ad
 import torch.nn as nn
 import torch.nn.functional as F
 from functorch import combine_state_for_ensemble
@@ -67,17 +68,17 @@ class SimNorm(nn.Module):
     Simplicial normalization.
     Adapted from https://arxiv.org/abs/2204.00616.
     """
-    
+
     def __init__(self, cfg):
         super().__init__()
         self.dim = cfg.simnorm_dim
-    
+
     def forward(self, x):
         shp = x.shape
         x = x.view(*shp[:-1], -1, self.dim)
         x = F.softmax(x, dim=-1)
         return x.view(*shp)
-        
+
     def __repr__(self):
         return f"SimNorm(dim={self.dim})"
 
@@ -98,13 +99,44 @@ class NormedLinear(nn.Linear):
         if self.dropout:
             x = self.dropout(x)
         return self.act(self.ln(x))
-    
+
     def __repr__(self):
         repr_dropout = f", dropout={self.dropout.p}" if self.dropout else ""
         return f"NormedLinear(in_features={self.in_features}, "\
             f"out_features={self.out_features}, "\
             f"bias={self.bias is not None}{repr_dropout}, "\
             f"act={self.act.__class__.__name__})"
+
+
+class SimbaBlock(nn.Module):
+    def __init__(self, dim: int) -> None:
+        super().__init__()
+        self.block = nn.Sequential(
+            nn.LayerNorm(dim),
+            nn.Linear(dim, 4 * dim),
+            nn.ReLU(),
+            nn.Linear(4 * dim, dim),
+        )
+
+    def forward(self, x):
+        return x + self.block(x)
+
+
+def simba(in_dim, mlp_dims, out_dim, act=None):
+    if isinstance(mlp_dims, int):
+        mlp_dims = [mlp_dims]
+
+    layers = []
+    layers = [
+        nn.Linear(in_dim, mlp_dims[0]),
+        *[SimbaBlock(mlp_dim) for mlp_dim in mlp_dims],
+    ]
+    layers.append(nn.LayerNorm(mlp_dims[-1]))
+    layers.append(nn.Linear(mlp_dims[-1], out_dim))
+    if act:
+        layers.append(act)
+
+    return nn.Sequential(*layers)
 
 
 def mlp(in_dim, mlp_dims, out_dim, act=None, dropout=0.):
@@ -139,11 +171,15 @@ def conv(in_shape, num_channels, act=None):
     return nn.Sequential(*layers)
 
 
-def enc(cfg, out={}):
+def enc(cfg, out={}, is_enc=False):
     """
     Returns a dictionary of encoders for each observation in the dict.
     """
     for k in cfg.obs_shape.keys():
+        if is_enc:
+            out[k] = simba(cfg.obs_shape[k][0] + cfg.task_dim, max(cfg.num_enc_layers-1, 1)*[cfg.enc_dim], cfg.latent_dim, act=SimNorm(cfg))
+            continue
+
         if k == 'state':
             out[k] = mlp(cfg.obs_shape[k][0] + cfg.task_dim, max(cfg.num_enc_layers-1, 1)*[cfg.enc_dim], cfg.latent_dim, act=SimNorm(cfg))
         elif k == 'rgb':
