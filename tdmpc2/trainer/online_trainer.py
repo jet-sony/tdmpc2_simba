@@ -113,5 +113,5 @@ class OnlineTrainer(Trainer):
                 train_metrics.update(_train_metrics)
 
             self._step += 1
-    
+
         self.logger.finish(self.agent)
